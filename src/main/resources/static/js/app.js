@@ -27,6 +27,17 @@ const App = {
             return item ? item.label : '';
         });
 
+        // 按时间段的欢迎语
+        const greetingText = computed(() => {
+            const h = new Date().getHours();
+            if (h < 6) return '夜深了，注意休息 🌙';
+            if (h < 9) return '早上好，新的一天开始了 ☀️';
+            if (h < 12) return '上午好，精力充沛地工作吧 💪';
+            if (h < 14) return '中午好，别忘了休息一下 🌤️';
+            if (h < 18) return '下午好，继续加油 📚';
+            return '晚上好，回顾一下今天的成果 ✨';
+        });
+
         // 仪表盘统计数据
         const stats = reactive([
             { label: '学生总数', value: 0, icon: 'fa-solid fa-users', color: '#409EFF' },
@@ -364,7 +375,7 @@ const App = {
         // ==================== 暴露给模板 ====================
         return {
             // 全局
-            isLoggedIn, userInfo, currentRoute, currentTitle, sidebarCollapsed, menuItems, stats,
+            isLoggedIn, userInfo, currentRoute, currentTitle, sidebarCollapsed, menuItems, stats, greetingText,
             // 登录
             loginForm, loginRules, loginFormRef, loginLoading, handleLogin, handleLogout,
             // 路由

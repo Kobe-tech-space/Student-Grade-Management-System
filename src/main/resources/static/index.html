@@ -4,8 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>学生成绩管理系统</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Element Plus -->
     <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom -->
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -19,28 +25,24 @@
             </div>
             <div class="login-card">
                 <div class="login-header">
-                    <div class="login-icon">
-                        <i class="fa-solid fa-graduation-cap"></i>
-                    </div>
+                    <div class="login-icon"><i class="fa-solid fa-graduation-cap"></i></div>
                     <h1>学生成绩管理系统</h1>
                     <p>Student Grade Management System</p>
                 </div>
-                <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" class="login-form">
+                <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef">
                     <el-form-item prop="username">
-                        <el-input v-model="loginForm.username" placeholder="请输入用户名" prefix-icon="User" size="large" clearable></el-input>
+                        <el-input v-model="loginForm.username" placeholder="用户名" prefix-icon="User" size="large" clearable></el-input>
                     </el-form-item>
                     <el-form-item prop="password">
-                        <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" prefix-icon="Lock" size="large" show-password @keyup.enter="handleLogin"></el-input>
+                        <el-input v-model="loginForm.password" type="password" placeholder="密码" prefix-icon="Lock" size="large" show-password @keyup.enter="handleLogin"></el-input>
                     </el-form-item>
                     <el-form-item>
                         <el-button type="primary" size="large" class="login-btn" @click="handleLogin" :loading="loginLoading" round>
-                            {{ loginLoading ? '登录中...' : '登 录' }}
+                            {{ loginLoading ? '验证中...' : '登 录' }}
                         </el-button>
                     </el-form-item>
                 </el-form>
-                <div class="login-footer">
-                    <span>管理员 admin / admin123 · 学生 zhangsan / 123456</span>
-                </div>
+                <div class="login-footer"><span>admin / admin123 · zhangsan / 123456</span></div>
             </div>
         </div>
 
@@ -63,16 +65,19 @@
                         <span v-show="!sidebarCollapsed">{{ item.label }}</span>
                     </a>
                 </nav>
-                <div class="sidebar-footer" v-show="!sidebarCollapsed">
-                    在线 · {{ userInfo.role === 'ADMIN' ? '管理员' : '学生' }}
+                <div class="sidebar-footer">
+                    <span v-show="!sidebarCollapsed" style="white-space:nowrap">{{ themeLabel }}</span>
+                    <button class="theme-toggle" @click="toggleTheme" :title="themeLabel">
+                        <i :class="isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon'"></i>
+                    </button>
                 </div>
             </aside>
 
-            <!-- 主内容区 -->
+            <!-- 主内容 -->
             <main class="main-content">
                 <header class="top-bar">
                     <div class="top-bar-left">
-                        <button class="toggle-btn" @click="sidebarCollapsed = !sidebarCollapsed" :title="sidebarCollapsed ? '展开菜单' : '收起菜单'">
+                        <button class="toggle-btn" @click="sidebarCollapsed = !sidebarCollapsed">
                             <i :class="sidebarCollapsed ? 'fa-solid fa-bars' : 'fa-solid fa-bars-staggered'"></i>
                         </button>
                         <el-breadcrumb separator="/">
@@ -89,54 +94,90 @@
                 <div class="content-area">
 
                     <!-- ============ Dashboard ============ -->
-                    <div v-if="currentRoute === 'dashboard'" class="page">
+                    <div v-if="currentRoute === 'dashboard'" class="page-enter-active" :key="'dashboard'">
+                        <!-- 欢迎横幅 -->
                         <div class="welcome-banner">
                             <h2>{{ greetingText }}</h2>
-                            <p>{{ userInfo.realName }}，{{ userInfo.role === 'ADMIN' ? '您可以管理学生信息、录入成绩、查看排名统计' : '您可以查询自己的成绩和排名' }}</p>
+                            <p>{{ userInfo.realName }}，{{ userInfo.role === 'ADMIN' ? '您可以管理学生信息、录入成绩、查看排名与数据趋势' : '您可以查询自己的成绩和排名情况' }}</p>
                         </div>
+
+                        <!-- KPI 统计卡 -->
                         <div class="stats-grid">
                             <div class="stat-card" v-for="stat in stats" :key="stat.label" :style="{ '--accent': stat.color }">
                                 <div class="stat-icon"><i :class="stat.icon"></i></div>
                                 <div class="stat-info">
-                                    <div class="stat-value">{{ stat.value }}</div>
+                                    <div class="stat-value count-up" :data-target="stat.value">{{ stat.displayValue || 0 }}</div>
                                     <div class="stat-label">{{ stat.label }}</div>
+                                    <div class="stat-sub" v-if="stat.sub">
+                                        <i :class="stat.sub.startsWith('+') ? 'fa-solid fa-arrow-up up' : 'fa-solid fa-arrow-down down'"></i>
+                                        {{ stat.sub }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <el-row :gutter="18">
-                            <el-col :span="12">
-                                <el-card shadow="never">
-                                    <template #header><span><i class="fa-solid fa-bolt" style="color:var(--primary)"></i> 快捷操作</span></template>
-                                    <div class="quick-actions">
-                                        <div class="quick-action-btn" @click="navigateTo({path:'students', label:'学生管理', icon:''})">
-                                            <i class="fa-solid fa-user-graduate"></i><span>学生管理</span>
-                                        </div>
-                                        <div class="quick-action-btn" @click="navigateTo({path:'grades/entry', label:'成绩录入', icon:''})">
-                                            <i class="fa-solid fa-pen-to-square"></i><span>成绩录入</span>
-                                        </div>
-                                        <div class="quick-action-btn" @click="navigateTo({path:'ranking', label:'排名统计', icon:''})">
-                                            <i class="fa-solid fa-trophy"></i><span>排名统计</span>
-                                        </div>
+
+                        <!-- 骨架屏（加载中） -->
+                        <div v-if="dashboardLoading">
+                            <div class="chart-grid">
+                                <div class="chart-card"><div class="skeleton skeleton-card"></div></div>
+                                <div class="chart-card"><div class="skeleton skeleton-card"></div></div>
+                            </div>
+                        </div>
+
+                        <!-- 图表 + 排名 -->
+                        <div v-else>
+                            <div class="chart-grid">
+                                <div class="chart-card">
+                                    <div class="chart-card-header">
+                                        <h3><i class="fa-solid fa-chart-column" style="color:var(--primary)"></i> 成绩趋势</h3>
+                                        <span>近 5 次考试平均分</span>
                                     </div>
-                                </el-card>
-                            </el-col>
-                            <el-col :span="12">
-                                <el-card shadow="never">
-                                    <template #header><span><i class="fa-solid fa-circle-info" style="color:var(--primary)"></i> 系统信息</span></template>
-                                    <div style="line-height:2.2;color:var(--text-secondary)">
-                                        <p><i class="fa-solid fa-check-circle" style="color:var(--success)"></i> 支持学生信息完整 CRUD 管理</p>
-                                        <p><i class="fa-solid fa-check-circle" style="color:var(--success)"></i> 多条件成绩查询与修改</p>
-                                        <p><i class="fa-solid fa-check-circle" style="color:var(--success)"></i> 自动排名统计（单科 & 综合）</p>
-                                        <p><i class="fa-solid fa-check-circle" style="color:var(--success)"></i> 分页浏览 + 模糊搜索</p>
-                                        <p><i class="fa-solid fa-check-circle" style="color:var(--success)"></i> 管理员 / 学生 权限分离</p>
+                                    <div class="chart-container" id="chartTrend"></div>
+                                </div>
+                                <div class="chart-card">
+                                    <div class="chart-card-header">
+                                        <h3><i class="fa-solid fa-chart-pie" style="color:var(--info)"></i> 成绩分布</h3>
+                                        <span>全部课程统计</span>
                                     </div>
-                                </el-card>
-                            </el-col>
-                        </el-row>
+                                    <div class="chart-container" id="chartDist"></div>
+                                </div>
+                            </div>
+
+                            <!-- Top 10 排名 -->
+                            <el-card shadow="never" style="margin-bottom:0">
+                                <template #header>
+                                    <span><i class="fa-solid fa-trophy" style="color:var(--warning)"></i> 综合排名 Top 10</span>
+                                </template>
+                                <el-table :data="topRanking" stripe style="width:100%" size="small">
+                                    <el-table-column label="排名" width="70" align="center">
+                                        <template #default="scope">
+                                            <el-tag v-if="scope.$index === 0" type="danger" size="small" effect="dark">🥇 1</el-tag>
+                                            <el-tag v-else-if="scope.$index === 1" type="warning" size="small" effect="dark">🥈 2</el-tag>
+                                            <el-tag v-else-if="scope.$index === 2" type="success" size="small" effect="dark">🥉 3</el-tag>
+                                            <span v-else style="color:var(--text-secondary);font-weight:600">{{ scope.$index + 1 }}</span>
+                                        </template>
+                                    </el-table-column>
+                                    <el-table-column prop="studentName" label="姓名" width="100"></el-table-column>
+                                    <el-table-column prop="studentNo" label="学号" width="120"></el-table-column>
+                                    <el-table-column prop="className" label="班级" min-width="160"></el-table-column>
+                                    <el-table-column label="平均分" width="200">
+                                        <template #default="scope">
+                                            <div class="score-bar">
+                                                <span style="width:48px;font-weight:700">{{ scope.row.avgScore }}</span>
+                                                <div class="score-bar-track">
+                                                    <div class="score-bar-fill" :style="{ width: (scope.row.avgScore||0) + '%', background: 'linear-gradient(90deg, var(--primary), var(--primary-light))' }"></div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </el-table-column>
+                                    <el-table-column prop="totalScore" label="总分" width="80" align="center"></el-table-column>
+                                </el-table>
+                            </el-card>
+                        </div>
                     </div>
 
                     <!-- ============ 学生管理 ============ -->
-                    <div v-if="currentRoute === 'students'" class="page">
+                    <div v-if="currentRoute === 'students'" class="page-enter-active" :key="'students'">
                         <el-card shadow="never">
                             <div class="page-toolbar">
                                 <el-input v-model="studentSearch.keyword" placeholder="搜索姓名或学号..." clearable style="width:280px" @keyup.enter="loadStudents" size="large">
@@ -145,8 +186,12 @@
                                 <el-button type="primary" size="large" @click="showStudentDialog(null)"><i class="fa-solid fa-plus"></i> 新增学生</el-button>
                                 <span style="color:var(--text-secondary);font-size:13px;margin-left:auto">共 {{ studentTotal }} 名学生</span>
                             </div>
-                            <el-table :data="studentList" stripe v-loading="studentLoading" style="width:100%" :header-cell-style="{background:'#f8f9fb',color:'#7f8c9b',fontWeight:'600'}" empty-text="暂无学生数据">
-                                <el-table-column label="序号" width="60" align="center">
+                            <!-- 骨架屏 -->
+                            <div v-if="studentLoading && studentList.length === 0">
+                                <div class="skeleton skeleton-row" v-for="i in 8" :key="i"></div>
+                            </div>
+                            <el-table v-else :data="studentList" stripe v-loading="studentLoading" style="width:100%" empty-text="暂无学生数据">
+                                <el-table-column label="序号" width="65" align="center">
                                     <template #default="scope">
                                         {{ (studentPage - 1) * studentPageSize + scope.$index + 1 }}
                                     </template>
@@ -155,9 +200,8 @@
                                 <el-table-column prop="name" label="姓名" width="90"></el-table-column>
                                 <el-table-column prop="gender" label="性别" width="65" align="center">
                                     <template #default="scope">
-                                        <span :style="{color: scope.row.gender === '男' ? '#409EFF' : '#F56C6C'}">
+                                        <span :style="{color: scope.row.gender === '男' ? '#2563EB' : '#EF4444'}">
                                             <i :class="scope.row.gender === '男' ? 'fa-solid fa-mars' : 'fa-solid fa-venus'"></i>
-                                            {{ scope.row.gender }}
                                         </span>
                                     </template>
                                 </el-table-column>
@@ -179,7 +223,7 @@
                     </div>
 
                     <!-- ============ 成绩录入 ============ -->
-                    <div v-if="currentRoute === 'grades/entry'" class="page">
+                    <div v-if="currentRoute === 'grades/entry'" class="page-enter-active" :key="'gradeEntry'">
                         <el-card shadow="never">
                             <template #header><span><i class="fa-solid fa-pen-to-square" style="color:var(--primary)"></i> 录入新成绩</span></template>
                             <el-form :model="gradeEntryForm" label-width="90px" style="max-width:640px">
@@ -210,9 +254,7 @@
                                     <el-date-picker v-model="gradeEntryForm.examDate" type="date" placeholder="选择日期" format="YYYY-MM-DD" value-format="YYYY-MM-DD" size="large" style="width:220px"></el-date-picker>
                                 </el-form-item>
                                 <el-form-item>
-                                    <el-button type="primary" size="large" @click="submitGrade" :loading="gradeSubmitting">
-                                        <i class="fa-solid fa-check"></i> 确认录入
-                                    </el-button>
+                                    <el-button type="primary" size="large" @click="submitGrade" :loading="gradeSubmitting"><i class="fa-solid fa-check"></i> 确认录入</el-button>
                                     <el-button size="large" @click="resetGradeForm"><i class="fa-solid fa-rotate"></i> 重置</el-button>
                                 </el-form-item>
                             </el-form>
@@ -220,7 +262,7 @@
                     </div>
 
                     <!-- ============ 成绩查询 ============ -->
-                    <div v-if="currentRoute === 'grades/query'" class="page">
+                    <div v-if="currentRoute === 'grades/query'" class="page-enter-active" :key="'gradeQuery'">
                         <el-card shadow="never">
                             <div class="page-toolbar">
                                 <el-select v-model="gradeQuery.courseId" placeholder="全部课程" clearable style="width:180px" @change="loadGrades" size="large">
@@ -232,15 +274,17 @@
                                 <el-button type="primary" size="large" @click="loadGrades"><i class="fa-solid fa-search"></i> 查询</el-button>
                                 <span style="color:var(--text-secondary);font-size:13px;margin-left:auto">共 {{ gradeTotal }} 条记录</span>
                             </div>
-                            <el-table :data="gradeList" stripe v-loading="gradeLoading" style="width:100%" empty-text="暂无成绩数据">
-                                <el-table-column prop="id" label="#" width="50" align="center"></el-table-column>
+                            <div v-if="gradeLoading && gradeList.length === 0">
+                                <div class="skeleton skeleton-row" v-for="i in 8" :key="i"></div>
+                            </div>
+                            <el-table v-else :data="gradeList" stripe v-loading="gradeLoading" style="width:100%" empty-text="暂无成绩数据">
                                 <el-table-column prop="studentName" label="学生" width="100"></el-table-column>
                                 <el-table-column prop="studentNo" label="学号" width="120"></el-table-column>
                                 <el-table-column prop="courseName" label="课程" width="150"></el-table-column>
-                                <el-table-column label="分数" width="180">
+                                <el-table-column label="分数" width="200">
                                     <template #default="scope">
                                         <div class="score-bar">
-                                            <span style="width:40px;text-align:right;font-weight:700"
+                                            <span style="width:42px;text-align:right;font-weight:700"
                                                   :class="{
                                                     'score-excellent': scope.row.score >= 90,
                                                     'score-good': scope.row.score >= 80 && scope.row.score < 90,
@@ -274,8 +318,8 @@
                     </div>
 
                     <!-- ============ 排名统计 ============ -->
-                    <div v-if="currentRoute === 'ranking'" class="page">
-                        <!-- 领奖台 Top 3 -->
+                    <div v-if="currentRoute === 'ranking'" class="page-enter-active" :key="'ranking'">
+                        <!-- Top 3 领奖台 -->
                         <div class="podium-row" v-if="rankingList.length >= 3">
                             <div class="podium-item silver" v-if="rankingList[1]">
                                 <div class="podium-medal">🥈</div>
@@ -305,7 +349,10 @@
                                 </el-select>
                                 <el-button type="primary" style="margin-left:8px" @click="loadRanking">查询</el-button>
                             </template>
-                            <el-table :data="rankingList" stripe v-loading="rankingLoading" highlight-current-row style="width:100%" empty-text="暂无排名数据">
+                            <div v-if="rankingLoading && rankingList.length === 0">
+                                <div class="skeleton skeleton-row" v-for="i in 8" :key="i"></div>
+                            </div>
+                            <el-table v-else :data="rankingList" stripe v-loading="rankingLoading" highlight-current-row style="width:100%" empty-text="暂无排名数据">
                                 <el-table-column label="排名" width="70" align="center">
                                     <template #default="scope">
                                         <el-tag v-if="scope.$index === 0" type="danger" size="small" effect="dark">🥇 1</el-tag>
@@ -320,20 +367,15 @@
                                 <el-table-column label="平均分" width="200">
                                     <template #default="scope">
                                         <div class="score-bar">
-                                            <span style="width:50px;font-weight:700">{{ scope.row.avgScore }}</span>
+                                            <span style="width:48px;font-weight:700">{{ scope.row.avgScore }}</span>
                                             <div class="score-bar-track">
-                                                <div class="score-bar-fill" :style="{
-                                                    width: (scope.row.avgScore || 0) + '%',
-                                                    background: 'linear-gradient(90deg, var(--primary), var(--primary-light))'
-                                                }"></div>
+                                                <div class="score-bar-fill" :style="{ width: (scope.row.avgScore||0) + '%', background: 'linear-gradient(90deg, var(--primary), var(--primary-light))' }"></div>
                                             </div>
                                         </div>
                                     </template>
                                 </el-table-column>
                                 <el-table-column prop="totalScore" label="总分" width="90" align="center">
-                                    <template #default="scope">
-                                        <span style="font-weight:700;color:#1a1a2e">{{ scope.row.totalScore }}</span>
-                                    </template>
+                                    <template #default="scope"><span style="font-weight:700">{{ scope.row.totalScore }}</span></template>
                                 </el-table-column>
                                 <el-table-column prop="courseCount" label="门数" width="70" align="center"></el-table-column>
                             </el-table>
@@ -373,7 +415,7 @@
                 <el-form-item label="分数">
                     <div style="display:flex;align-items:center;gap:12px">
                         <el-input-number v-model="editGradeForm.score" :min="0" :max="100" :precision="1" size="large" style="width:150px"></el-input-number>
-                        <el-tag v-if="editGradeForm.score !== null" :type="scoreTagType(editGradeForm.score)" size="large">{{ editGradeForm.score }} 分</el-tag>
+                        <el-tag :type="scoreTagType(editGradeForm.score)" size="large">{{ editGradeForm.score }} 分</el-tag>
                     </div>
                 </el-form-item>
             </el-form>
@@ -390,6 +432,8 @@
     <script src="https://unpkg.com/element-plus"></script>
     <script src="https://unpkg.com/element-plus/dist/locale/zh-cn.js"></script>
     <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <!-- App -->
     <script src="/js/api.js"></script>
     <script src="/js/app.js"></script>

@@ -34,4 +34,8 @@ public interface StudentMapper {
 
     /** 根据用户 ID 查询对应的学生记录 */
     Student selectByUserId(@Param("userId") Integer userId);
+
+    String selectMaxStudentNo();
+
+    int updateUserId(Student student);
 }

@@ -381,6 +381,25 @@
                         </el-card>
                     </div>
 
+                    <!-- ============ 个人信息（学生自助修改） ============ -->
+                    <div v-if="currentRoute === 'profile'" class="page-enter-active" :key="'profile'">
+                        <el-card shadow="never" style="max-width:560px">
+                            <template #header><span><i class="fa-solid fa-user-gear" style="color:var(--primary)"></i> 个人信息</span></template>
+                            <el-form :model="profileForm" label-width="100px">
+                                <el-form-item label="姓名"><el-input :model-value="userInfo.realName" disabled size="large"></el-input></el-form-item>
+                                <el-form-item label="角色"><el-input model-value="学生" disabled size="large"></el-input></el-form-item>
+                                <el-form-item label="电话"><el-input v-model="profileForm.phone" placeholder="请输入电话" size="large"></el-input></el-form-item>
+                                <el-form-item label="邮箱"><el-input v-model="profileForm.email" placeholder="请输入邮箱" size="large"></el-input></el-form-item>
+                                <el-divider>修改密码（不修改请留空）</el-divider>
+                                <el-form-item label="新密码"><el-input v-model="profileForm.newPassword" type="password" placeholder="留空则不修改" size="large" show-password></el-input></el-form-item>
+                                <el-form-item label="确认密码"><el-input v-model="profileForm.confirmPassword" type="password" placeholder="再次输入新密码" size="large" show-password></el-input></el-form-item>
+                                <el-form-item>
+                                    <el-button type="primary" size="large" @click="saveProfile" :loading="profileSaving"><i class="fa-solid fa-check"></i> 保存修改</el-button>
+                                </el-form-item>
+                            </el-form>
+                        </el-card>
+                    </div>
+
                 </div>
             </main>
         </div>
@@ -388,7 +407,14 @@
         <!-- ==================== 学生编辑弹窗 ==================== -->
         <el-dialog v-model="studentDialogVisible" :title="studentDialogTitle" width="520px" :close-on-click-modal="false" destroy-on-close>
             <el-form :model="studentForm" label-width="80px">
-                <el-form-item label="学号"><el-input v-model="studentForm.studentNo" placeholder="请输入学号" size="large"></el-input></el-form-item>
+                <!-- 新增：显示自动生成的学号 -->
+                <el-form-item label="学号" v-if="!studentForm.id">
+                    <el-input :model-value="studentForm.studentNo" disabled size="large">
+                        <template #suffix><el-tag type="success" size="small">自动生成</el-tag></template>
+                    </el-input>
+                </el-form-item>
+                <!-- 编辑：可修改学号 -->
+                <el-form-item label="学号" v-if="studentForm.id"><el-input v-model="studentForm.studentNo" placeholder="请输入学号" size="large"></el-input></el-form-item>
                 <el-form-item label="姓名"><el-input v-model="studentForm.name" placeholder="请输入姓名" size="large"></el-input></el-form-item>
                 <el-form-item label="性别">
                     <el-radio-group v-model="studentForm.gender" size="large">
@@ -396,10 +422,20 @@
                         <el-radio-button value="女"><i class="fa-solid fa-venus" style="color:var(--danger)"></i> 女</el-radio-button>
                     </el-radio-group>
                 </el-form-item>
-                <el-form-item label="班级"><el-input v-model="studentForm.className" placeholder="请输入班级" size="large"></el-input></el-form-item>
-                <el-form-item label="电话"><el-input v-model="studentForm.phone" placeholder="请输入电话" size="large"></el-input></el-form-item>
-                <el-form-item label="邮箱"><el-input v-model="studentForm.email" placeholder="请输入邮箱" size="large"></el-input></el-form-item>
+                <!-- 新增：班级下拉选择；编辑：可输入 -->
+                <el-form-item label="班级" v-if="!studentForm.id">
+                    <el-select v-model="studentForm.className" placeholder="请选择班级" filterable style="width:100%" size="large">
+                        <el-option v-for="opt in classOptions" :key="opt.value" :value="opt.value" :label="opt.label"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="班级" v-if="studentForm.id"><el-input v-model="studentForm.className" placeholder="请输入班级" size="large"></el-input></el-form-item>
+                <el-form-item label="电话" v-if="studentForm.id"><el-input v-model="studentForm.phone" placeholder="请输入电话" size="large"></el-input></el-form-item>
+                <el-form-item label="邮箱" v-if="studentForm.id"><el-input v-model="studentForm.email" placeholder="请输入邮箱" size="large"></el-input></el-form-item>
             </el-form>
+            <div v-if="!studentForm.id" style="color:var(--text-tertiary);font-size:12px;margin-top:-8px;display:flex;align-items:center;gap:6px">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>登录账号 = 学号，初始密码 = <code style="background:var(--primary-bg);padding:1px 6px;border-radius:3px;color:var(--primary)">123456</code></span>
+            </div>
             <template #footer>
                 <el-button size="large" @click="studentDialogVisible = false">取消</el-button>
                 <el-button type="primary" size="large" @click="saveStudent" :loading="studentSaving">保存</el-button>

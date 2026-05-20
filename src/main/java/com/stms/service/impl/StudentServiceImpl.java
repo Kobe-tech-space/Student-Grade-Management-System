@@ -2,29 +2,29 @@ package com.stms.service.impl;
 
 import com.stms.common.PageResult;
 import com.stms.mapper.StudentMapper;
+import com.stms.mapper.UserMapper;
 import com.stms.model.Student;
+import com.stms.model.User;
 import com.stms.service.StudentService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
-/**
- * 学生管理业务逻辑实现
- */
 @Service
 public class StudentServiceImpl implements StudentService {
 
     private final StudentMapper studentMapper;
+    private final UserMapper userMapper;
+    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    public StudentServiceImpl(StudentMapper studentMapper) {
+    public StudentServiceImpl(StudentMapper studentMapper, UserMapper userMapper) {
         this.studentMapper = studentMapper;
+        this.userMapper = userMapper;
     }
 
-    /**
-     * 分页查询学生列表
-     * 计算 offset = (pageNum - 1) * pageSize，调用 Mapper 分页查询
-     */
     @Override
     public PageResult<Student> getStudentPage(int pageNum, int pageSize, String keyword) {
         int offset = (pageNum - 1) * pageSize;
@@ -43,9 +43,37 @@ public class StudentServiceImpl implements StudentService {
         return studentMapper.selectById(id);
     }
 
+    /**
+     * 新增学生，同时创建登录账号
+     * 学号自动生成（现有最大学号 + 1），密码默认为 123456
+     */
     @Override
+    @Transactional
     public void addStudent(Student student) {
+        // 自动生成学号
+        String maxNo = studentMapper.selectMaxStudentNo();
+        int nextNo = 1;
+        if (maxNo != null && !maxNo.isEmpty()) {
+            nextNo = Integer.parseInt(maxNo) + 1;
+        }
+        // 没有已有时从 2024001 起
+        if (nextNo < 2024001) nextNo = 2024001;
+        student.setStudentNo(String.valueOf(nextNo));
+
+        // 插入学生记录
         studentMapper.insert(student);
+
+        // 创建登录账号：用户名为学号，密码 123456
+        User user = new User();
+        user.setUsername(student.getStudentNo());
+        user.setPassword(encoder.encode("123456"));
+        user.setRealName(student.getName());
+        userMapper.insert(user);
+
+        // 关联 student.user_id
+        student.setUserId(user.getId());
+        // 更新关联
+        studentMapper.updateUserId(student);
     }
 
     @Override
@@ -54,13 +82,33 @@ public class StudentServiceImpl implements StudentService {
         studentMapper.update(student);
     }
 
-    /**
-     * 删除学生及其所有关联成绩
-     * Mapper XML 中使用了多条 DELETE 语句保证数据一致性
-     */
     @Override
     @Transactional
     public void deleteStudent(Integer id) {
         studentMapper.deleteById(id);
+    }
+
+    /**
+     * 学生自助修改个人信息：仅允许电话、邮箱、密码
+     */
+    @Override
+    @Transactional
+    public void updateProfile(Integer userId, Map<String, String> profile) {
+        Student student = studentMapper.selectByUserId(userId);
+        if (student == null) return;
+
+        // 更新电话和邮箱
+        if (profile.containsKey("phone")) student.setPhone(profile.get("phone"));
+        if (profile.containsKey("email")) student.setEmail(profile.get("email"));
+        studentMapper.update(student);
+
+        // 更新密码
+        if (profile.containsKey("password") && profile.get("password") != null
+                && !profile.get("password").isEmpty()) {
+            User user = new User();
+            user.setId(userId);
+            user.setPassword(encoder.encode(profile.get("password")));
+            userMapper.updatePassword(user);
+        }
     }
 }

@@ -74,4 +74,12 @@
         SELECT * FROM t_student WHERE user_id = #{userId}
     </select>
 
+    <select id="selectMaxStudentNo" resultType="string">
+        SELECT MAX(student_no) FROM t_student
+    </select>
+
+    <update id="updateUserId" parameterType="com.stms.model.Student">
+        UPDATE t_student SET user_id = #{userId} WHERE id = #{id}
+    </update>
+
 </mapper>

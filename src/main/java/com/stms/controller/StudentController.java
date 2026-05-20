@@ -2,12 +2,14 @@ package com.stms.controller;
 
 import com.stms.common.PageResult;
 import com.stms.common.Result;
+import com.stms.mapper.StudentMapper;
 import com.stms.model.Student;
 import com.stms.service.StudentService;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 学生管理控制器
@@ -18,9 +20,11 @@ import java.util.List;
 public class StudentController {
 
     private final StudentService studentService;
+    private final StudentMapper studentMapper;
 
-    public StudentController(StudentService studentService) {
+    public StudentController(StudentService studentService, StudentMapper studentMapper) {
         this.studentService = studentService;
+        this.studentMapper = studentMapper;
     }
 
     /**
@@ -58,6 +62,19 @@ public class StudentController {
         return Result.ok(student);
     }
 
+    /** 获取下一学号 */
+    @GetMapping("/nextNo")
+    public Result<String> nextNo(HttpServletRequest request) {
+        checkAdmin(request);
+        String maxNo = studentMapper.selectMaxStudentNo();
+        int nextNo = 1;
+        if (maxNo != null && !maxNo.isEmpty()) {
+            nextNo = Integer.parseInt(maxNo) + 1;
+        }
+        if (nextNo < 2024001) nextNo = 2024001;
+        return Result.ok(String.valueOf(nextNo));
+    }
+
     /** 新增学生 */
     @PostMapping
     public Result<Void> add(@RequestBody Student student, HttpServletRequest request) {
@@ -83,7 +100,26 @@ public class StudentController {
         return Result.ok("删除成功", null);
     }
 
-    /** 简单的管理员权限校验 */
+    /** 获取自己的学生信息 */
+    @GetMapping("/profile")
+    public Result<Student> getProfile(HttpServletRequest request) {
+        Integer userId = (Integer) request.getAttribute("userId");
+        Student student = studentMapper.selectByUserId(userId);
+        return Result.ok(student);
+    }
+
+    /**
+     * 学生自助修改个人信息：电话、邮箱、密码
+     * PUT /api/students/profile
+     */
+    @PutMapping("/profile")
+    public Result<Void> updateProfile(@RequestBody Map<String, String> profile,
+                                       HttpServletRequest request) {
+        Integer userId = (Integer) request.getAttribute("userId");
+        studentService.updateProfile(userId, profile);
+        return Result.ok("修改成功", null);
+    }
+
     private void checkAdmin(HttpServletRequest request) {
         String role = (String) request.getAttribute("role");
         if (!"ADMIN".equals(role)) {

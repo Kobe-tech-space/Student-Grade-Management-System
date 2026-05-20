@@ -35,13 +35,22 @@ const App = {
         }
 
         // 菜单
-        const menuItems = ref([
+        // 管理员菜单
+        const adminMenu = [
             { path: 'dashboard',    label: '系统首页',   icon: 'fa-solid fa-house' },
             { path: 'students',     label: '学生管理',   icon: 'fa-solid fa-user-graduate' },
             { path: 'grades/entry', label: '成绩录入',   icon: 'fa-solid fa-pen-to-square' },
             { path: 'grades/query', label: '成绩查询',   icon: 'fa-solid fa-magnifying-glass-chart' },
             { path: 'ranking',      label: '排名统计',   icon: 'fa-solid fa-trophy' }
-        ]);
+        ];
+        // 学生菜单
+        const studentMenu = [
+            { path: 'dashboard',    label: '系统首页',   icon: 'fa-solid fa-house' },
+            { path: 'grades/query', label: '成绩查询',   icon: 'fa-solid fa-magnifying-glass-chart' },
+            { path: 'ranking',      label: '排名统计',   icon: 'fa-solid fa-trophy' },
+            { path: 'profile',      label: '个人信息',   icon: 'fa-solid fa-user-gear' }
+        ];
+        const menuItems = computed(() => userInfo.value.role === 'ADMIN' ? adminMenu : studentMenu);
 
         const currentTitle = computed(() => {
             const item = menuItems.value.find(m => m.path === currentRoute.value);
@@ -256,8 +265,21 @@ const App = {
         const studentDialogTitle = computed(() => studentForm.id ? '编辑学生' : '新增学生');
         const studentSaving = ref(false);
         const studentForm = reactive({
-            id: null, studentNo: '', name: '', gender: '男',
-            className: '', phone: '', email: ''
+            id: null, studentNo: '', name: '', gender: '男', className: '', phone: '', email: ''
+        });
+
+        // 班级选项
+        const majors = ['计算机科学', '软件工程', '人工智能', '数据科学', '网络工程', '信息安全'];
+        const classNums = ['1', '2', '3', '4'];
+        const classOptions = computed(() => {
+            const opts = [];
+            majors.forEach(m => {
+                classNums.forEach(n => {
+                    const val = m + '2024-' + n + '班';
+                    opts.push({ value: val, label: val });
+                });
+            });
+            return opts;
         });
 
         async function loadStudents() {
@@ -273,7 +295,7 @@ const App = {
             }
         }
 
-        function showStudentDialog(row) {
+        async function showStudentDialog(row) {
             if (row) {
                 Object.assign(studentForm, {
                     id: row.id, studentNo: row.studentNo, name: row.name,
@@ -281,8 +303,11 @@ const App = {
                     phone: row.phone || '', email: row.email || ''
                 });
             } else {
+                // 新增：自动获取学号
+                let nextNo = '';
+                try { nextNo = await API.getNextStudentNo(); } catch {}
                 Object.assign(studentForm, {
-                    id: null, studentNo: '', name: '', gender: '男',
+                    id: null, studentNo: nextNo, name: '', gender: '男',
                     className: '', phone: '', email: ''
                 });
             }
@@ -436,6 +461,47 @@ const App = {
             }
         }
 
+        // ==================== 个人信息（学生自助修改） ====================
+        const profileForm = reactive({ phone: '', email: '', password: '', newPassword: '', confirmPassword: '' });
+        const profileSaving = ref(false);
+
+        async function loadProfile() {
+            try {
+                const data = await API.request('/students/profile', 'GET');
+                if (data) {
+                    profileForm.phone = data.phone || '';
+                    profileForm.email = data.email || '';
+                }
+            } catch (e) {
+                console.error('loadProfile failed', e);
+            }
+        }
+
+        async function saveProfile() {
+            if (profileForm.newPassword && profileForm.newPassword !== profileForm.confirmPassword) {
+                ElementPlus.ElMessage.warning('两次输入的新密码不一致');
+                return;
+            }
+            profileSaving.value = true;
+            try {
+                const payload = {
+                    phone: profileForm.phone,
+                    email: profileForm.email
+                };
+                if (profileForm.newPassword) {
+                    payload.password = profileForm.newPassword;
+                }
+                await API.updateProfile(payload);
+                ElementPlus.ElMessage.success('个人信息修改成功');
+                profileForm.newPassword = '';
+                profileForm.confirmPassword = '';
+            } catch (e) {
+                ElementPlus.ElMessage.error(e.message);
+            } finally {
+                profileSaving.value = false;
+            }
+        }
+
         // ==================== 排名 ====================
         const rankingList = ref([]);
         const rankingLoading = ref(false);
@@ -484,6 +550,7 @@ const App = {
             if (route === 'grades/entry') { await loadCourses(); await loadAllStudents(); }
             if (route === 'grades/query') { await loadCourses(); await loadGrades(); }
             if (route === 'ranking') { await loadCourses(); await loadRanking(); }
+            if (route === 'profile') { await loadProfile(); }
         });
 
         // ==================== 暴露 ====================
@@ -497,14 +564,15 @@ const App = {
             navigateTo,
             studentList, studentTotal, studentPage, studentPageSize, studentLoading,
             studentSearch, studentDialogVisible, studentDialogTitle, studentSaving, studentForm,
-            loadStudents, showStudentDialog, saveStudent, deleteStudent,
+            loadStudents, showStudentDialog, saveStudent, deleteStudent, classOptions,
             allCourses, allStudents,
             gradeEntryForm, gradeSubmitting, submitGrade, resetGradeForm,
             gradeList, gradeTotal, gradePage, gradePageSize, gradeLoading, gradeQuery,
             loadGrades, scoreTagType,
             editGradeVisible, editGradeForm, gradeSaving,
             showEditGradeDialog, saveEditGrade, deleteGrade,
-            rankingList, rankingLoading, rankingCourseId, loadRanking
+            rankingList, rankingLoading, rankingCourseId, loadRanking,
+            profileForm, profileSaving, loadProfile, saveProfile
         };
     }
 };

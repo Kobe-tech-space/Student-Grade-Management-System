@@ -28,4 +28,9 @@
         UPDATE t_user SET password = #{password} WHERE id = #{id}
     </update>
 
+    <insert id="insert" parameterType="com.stms.model.User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_user (username, password, real_name, role)
+        VALUES (#{username}, #{password}, #{realName}, 'STUDENT')
+    </insert>
+
 </mapper>

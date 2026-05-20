@@ -104,6 +104,16 @@ const API = {
         return this.request('/students/' + id, 'DELETE');
     },
 
+    /** 获取下一学号 */
+    getNextStudentNo() {
+        return this.request('/students/nextNo');
+    },
+
+    /** 学生自助修改个人信息 */
+    updateProfile(data) {
+        return this.request('/students/profile', 'PUT', data);
+    },
+
     // ========== 课程管理 ==========
     /** 获取全部课程 */
     getCourses() {

@@ -26,4 +26,6 @@ public interface UserMapper {
      * 更新用户密码（用于密码初始化）
      */
     int updatePassword(User user);
+
+    int insert(User user);
 }

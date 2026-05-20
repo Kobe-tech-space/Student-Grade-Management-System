@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.stms.mapper.CourseMapper">
+
+    <resultMap id="BaseResultMap" type="com.stms.model.Course">
+        <id property="id" column="id"/>
+        <result property="courseNo" column="course_no"/>
+        <result property="courseName" column="course_name"/>
+        <result property="credit" column="credit"/>
+        <result property="teacher" column="teacher"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT id, course_no, course_name, credit, teacher, created_at
+        FROM t_course
+        ORDER BY course_no
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM t_course WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.stms.model.Course" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_course (course_no, course_name, credit, teacher)
+        VALUES (#{courseNo}, #{courseName}, #{credit}, #{teacher})
+    </insert>
+
+</mapper>

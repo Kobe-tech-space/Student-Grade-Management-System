@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生成绩管理系统</title>
+    <!-- Element Plus CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 登录页 -->
+        <div v-if="!isLoggedIn" class="login-container">
+            <div class="login-bg-shapes">
+                <div class="shape shape-1"></div>
+                <div class="shape shape-2"></div>
+                <div class="shape shape-3"></div>
+            </div>
+            <div class="login-card">
+                <div class="login-header">
+                    <div class="login-icon">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <h1>学生成绩管理系统</h1>
+                    <p>Student Grade Management System</p>
+                </div>
+                <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" class="login-form">
+                    <el-form-item prop="username">
+                        <el-input v-model="loginForm.username" placeholder="请输入用户名" prefix-icon="User" size="large" clearable></el-input>
+                    </el-form-item>
+                    <el-form-item prop="password">
+                        <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" prefix-icon="Lock" size="large" show-password @keyup.enter="handleLogin"></el-input>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" size="large" class="login-btn" @click="handleLogin" :loading="loginLoading" round>
+                            {{ loginLoading ? '登录中...' : '登 录' }}
+                        </el-button>
+                    </el-form-item>
+                </el-form>
+                <div class="login-footer">
+                    <span>测试账号：admin / admin123</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主界面 -->
+        <div v-else class="main-layout">
+            <!-- 侧边栏 -->
+            <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
+                <div class="sidebar-header">
+                    <div class="sidebar-logo">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                        <span v-show="!sidebarCollapsed">成绩管理</span>
+                    </div>
+                </div>
+                <nav class="sidebar-nav">
+                    <a v-for="item in menuItems" :key="item.path"
+                       :href="'#' + item.path"
+                       :class="{ active: currentRoute === item.path }"
+                       @click="navigateTo(item)">
+                        <i :class="item.icon"></i>
+                        <span v-show="!sidebarCollapsed">{{ item.label }}</span>
+                    </a>
+                </nav>
+                <div class="sidebar-footer" v-show="!sidebarCollapsed">
+                    <span>当前角色：{{ userInfo.role === 'ADMIN' ? '管理员' : '学生' }}</span>
+                </div>
+            </aside>
+
+            <!-- 主内容区 -->
+            <main class="main-content">
+                <header class="top-bar">
+                    <div class="top-bar-left">
+                        <button class="toggle-btn" @click="sidebarCollapsed = !sidebarCollapsed">
+                            <i :class="sidebarCollapsed ? 'fa-solid fa-bars' : 'fa-solid fa-bars-staggered'"></i>
+                        </button>
+                        <el-breadcrumb separator="/">
+                            <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+                            <el-breadcrumb-item v-if="currentTitle">{{ currentTitle }}</el-breadcrumb-item>
+                        </el-breadcrumb>
+                    </div>
+                    <div class="top-bar-right">
+                        <span class="user-name"><i class="fa-solid fa-user"></i> {{ userInfo.realName }}</span>
+                        <el-button type="danger" plain size="small" @click="handleLogout" round>退出登录</el-button>
+                    </div>
+                </header>
+
+                <div class="content-area">
+                    <!-- Dashboard 仪表盘 -->
+                    <div v-if="currentRoute === 'dashboard'" class="page dashboard-page">
+                        <div class="stats-grid">
+                            <div class="stat-card" v-for="stat in stats" :key="stat.label" :style="{ '--accent': stat.color }">
+                                <div class="stat-icon"><i :class="stat.icon"></i></div>
+                                <div class="stat-info">
+                                    <div class="stat-value">{{ stat.value }}</div>
+                                    <div class="stat-label">{{ stat.label }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <el-row :gutter="20" style="margin-top:20px">
+                            <el-col :span="12">
+                                <el-card shadow="hover">
+                                    <template #header><span><i class="fa-solid fa-bolt"></i> 快捷操作</span></template>
+                                    <el-button type="primary" @click="navigateTo({path:'students', label:'学生管理', icon:''})">学生管理</el-button>
+                                    <el-button type="success" @click="navigateTo({path:'grades/entry', label:'成绩录入', icon:''})" style="margin-left:10px">成绩录入</el-button>
+                                    <el-button type="warning" @click="navigateTo({path:'ranking', label:'排名统计', icon:''})" style="margin-left:10px">排名统计</el-button>
+                                </el-card>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-card shadow="hover">
+                                    <template #header><span><i class="fa-solid fa-circle-info"></i> 系统信息</span></template>
+                                    <p>欢迎使用学生成绩管理系统。本系统支持学生管理、成绩录入与查询、排名统计等功能。</p>
+                                </el-card>
+                            </el-col>
+                        </el-row>
+                    </div>
+
+                    <!-- 学生管理 -->
+                    <div v-if="currentRoute === 'students'" class="page">
+                        <el-card shadow="never">
+                            <div class="page-toolbar">
+                                <el-input v-model="studentSearch.keyword" placeholder="搜索姓名或学号..." clearable style="width:260px" @keyup.enter="loadStudents">
+                                    <template #prefix><i class="fa-solid fa-magnifying-glass"></i></template>
+                                </el-input>
+                                <el-button type="primary" @click="showStudentDialog(null)"><i class="fa-solid fa-plus"></i> 新增学生</el-button>
+                            </div>
+                            <el-table :data="studentList" stripe v-loading="studentLoading" style="width:100%">
+                                <el-table-column prop="id" label="ID" width="60" align="center"></el-table-column>
+                                <el-table-column prop="studentNo" label="学号" width="120"></el-table-column>
+                                <el-table-column prop="name" label="姓名" width="80"></el-table-column>
+                                <el-table-column prop="gender" label="性别" width="60" align="center"></el-table-column>
+                                <el-table-column prop="className" label="班级" min-width="160"></el-table-column>
+                                <el-table-column prop="phone" label="电话" width="130"></el-table-column>
+                                <el-table-column prop="email" label="邮箱" min-width="180"></el-table-column>
+                                <el-table-column label="操作" width="160" fixed="right" align="center">
+                                    <template #default="scope">
+                                        <el-button type="primary" link size="small" @click="showStudentDialog(scope.row)">编辑</el-button>
+                                        <el-button type="danger" link size="small" @click="deleteStudent(scope.row)">删除</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                            <div class="page-pagination">
+                                <el-pagination background layout="total, prev, pager, next" :total="studentTotal"
+                                    :page-size="studentPageSize" v-model:current-page="studentPage" @current-change="loadStudents"></el-pagination>
+                            </div>
+                        </el-card>
+                    </div>
+
+                    <!-- 成绩录入 -->
+                    <div v-if="currentRoute === 'grades/entry'" class="page">
+                        <el-card shadow="never">
+                            <template #header><span><i class="fa-solid fa-pen-to-square"></i> 录入新成绩</span></template>
+                            <el-form :model="gradeEntryForm" label-width="100px" style="max-width:600px">
+                                <el-form-item label="选择学生">
+                                    <el-select v-model="gradeEntryForm.studentId" placeholder="请选择学生" filterable clearable style="width:100%">
+                                        <el-option v-for="s in allStudents" :key="s.id" :value="s.id" :label="s.name + ' (' + s.studentNo + ')'"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                                <el-form-item label="选择课程">
+                                    <el-select v-model="gradeEntryForm.courseId" placeholder="请选择课程" clearable style="width:100%">
+                                        <el-option v-for="c in allCourses" :key="c.id" :value="c.id" :label="c.courseName + ' (' + c.teacher + ')'"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                                <el-form-item label="分数">
+                                    <el-input-number v-model="gradeEntryForm.score" :min="0" :max="100" :precision="1" style="width:200px"></el-input-number>
+                                </el-form-item>
+                                <el-form-item label="考试日期">
+                                    <el-date-picker v-model="gradeEntryForm.examDate" type="date" placeholder="选择日期" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width:220px"></el-date-picker>
+                                </el-form-item>
+                                <el-form-item>
+                                    <el-button type="primary" @click="submitGrade" :loading="gradeSubmitting">确认录入</el-button>
+                                    <el-button @click="resetGradeForm">重置</el-button>
+                                </el-form-item>
+                            </el-form>
+                        </el-card>
+                    </div>
+
+                    <!-- 成绩查询 -->
+                    <div v-if="currentRoute === 'grades/query'" class="page">
+                        <el-card shadow="never">
+                            <div class="page-toolbar">
+                                <el-select v-model="gradeQuery.courseId" placeholder="选择课程" clearable style="width:180px" @change="loadGrades">
+                                    <el-option v-for="c in allCourses" :key="c.id" :value="c.id" :label="c.courseName"></el-option>
+                                </el-select>
+                                <el-input v-model="gradeQuery.keyword" placeholder="搜索学生姓名..." clearable style="width:200px" @keyup.enter="loadGrades">
+                                    <template #prefix><i class="fa-solid fa-magnifying-glass"></i></template>
+                                </el-input>
+                                <el-button type="primary" @click="loadGrades">查询</el-button>
+                            </div>
+                            <el-table :data="gradeList" stripe v-loading="gradeLoading" style="width:100%">
+                                <el-table-column prop="id" label="ID" width="60" align="center"></el-table-column>
+                                <el-table-column prop="studentName" label="学生姓名" width="100"></el-table-column>
+                                <el-table-column prop="studentNo" label="学号" width="120"></el-table-column>
+                                <el-table-column prop="courseName" label="课程" width="140"></el-table-column>
+                                <el-table-column prop="score" label="分数" width="80" align="center">
+                                    <template #default="scope">
+                                        <el-tag :type="scoreTagType(scope.row.score)" size="small">{{ scope.row.score }}</el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="examDate" label="考试日期" width="120" align="center"></el-table-column>
+                                <el-table-column label="操作" width="140" fixed="right" align="center" v-if="userInfo.role === 'ADMIN'">
+                                    <template #default="scope">
+                                        <el-button type="primary" link size="small" @click="showEditGradeDialog(scope.row)">修改</el-button>
+                                        <el-button type="danger" link size="small" @click="deleteGrade(scope.row)">删除</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                            <div class="page-pagination">
+                                <el-pagination background layout="total, prev, pager, next" :total="gradeTotal"
+                                    :page-size="gradePageSize" v-model:current-page="gradePage" @current-change="loadGrades"></el-pagination>
+                            </div>
+                        </el-card>
+                    </div>
+
+                    <!-- 排名统计 -->
+                    <div v-if="currentRoute === 'ranking'" class="page">
+                        <el-card shadow="never">
+                            <template #header>
+                                <span><i class="fa-solid fa-trophy"></i> 成绩排名</span>
+                                <el-select v-model="rankingCourseId" placeholder="选择课程（可选）" clearable style="width:200px;margin-left:20px" @change="loadRanking">
+                                    <el-option v-for="c in allCourses" :key="c.id" :value="c.id" :label="c.courseName"></el-option>
+                                </el-select>
+                                <el-button type="primary" style="margin-left:10px" @click="loadRanking">查询排名</el-button>
+                            </template>
+                            <el-table :data="rankingList" stripe v-loading="rankingLoading" highlight-current-row style="width:100%">
+                                <el-table-column type="index" label="排名" width="60" align="center">
+                                    <template #default="scope">
+                                        <el-tag v-if="scope.$index === 0" type="danger" size="small" effect="dark">🥇 1</el-tag>
+                                        <el-tag v-else-if="scope.$index === 1" type="warning" size="small" effect="dark">🥈 2</el-tag>
+                                        <el-tag v-else-if="scope.$index === 2" type="success" size="small" effect="dark">🥉 3</el-tag>
+                                        <span v-else>{{ scope.$index + 1 }}</span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="studentName" label="姓名" width="120"></el-table-column>
+                                <el-table-column prop="studentNo" label="学号" width="120"></el-table-column>
+                                <el-table-column prop="className" label="班级" min-width="160"></el-table-column>
+                                <el-table-column prop="avgScore" label="平均分" width="100" align="center"></el-table-column>
+                                <el-table-column prop="totalScore" label="总分" width="100" align="center"></el-table-column>
+                                <el-table-column prop="courseCount" label="考试门数" width="100" align="center"></el-table-column>
+                            </el-table>
+                        </el-card>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- 学生编辑弹窗 -->
+        <el-dialog v-model="studentDialogVisible" :title="studentDialogTitle" width="500px" :close-on-click-modal="false">
+            <el-form :model="studentForm" label-width="80px">
+                <el-form-item label="学号"><el-input v-model="studentForm.studentNo" placeholder="请输入学号"></el-input></el-form-item>
+                <el-form-item label="姓名"><el-input v-model="studentForm.name" placeholder="请输入姓名"></el-input></el-form-item>
+                <el-form-item label="性别">
+                    <el-radio-group v-model="studentForm.gender">
+                        <el-radio value="男">男</el-radio>
+                        <el-radio value="女">女</el-radio>
+                    </el-radio-group>
+                </el-form-item>
+                <el-form-item label="班级"><el-input v-model="studentForm.className" placeholder="请输入班级"></el-input></el-form-item>
+                <el-form-item label="电话"><el-input v-model="studentForm.phone" placeholder="请输入电话"></el-input></el-form-item>
+                <el-form-item label="邮箱"><el-input v-model="studentForm.email" placeholder="请输入邮箱"></el-input></el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="studentDialogVisible = false">取消</el-button>
+                <el-button type="primary" @click="saveStudent" :loading="studentSaving">保存</el-button>
+            </template>
+        </el-dialog>
+
+        <!-- 成绩修改弹窗 -->
+        <el-dialog v-model="editGradeVisible" title="修改成绩" width="400px" :close-on-click-modal="false">
+            <el-form label-width="80px">
+                <el-form-item label="学生">{{ editGradeForm.studentName }}</el-form-item>
+                <el-form-item label="课程">{{ editGradeForm.courseName }}</el-form-item>
+                <el-form-item label="分数">
+                    <el-input-number v-model="editGradeForm.score" :min="0" :max="100" :precision="1"></el-input-number>
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="editGradeVisible = false">取消</el-button>
+                <el-button type="primary" @click="saveEditGrade" :loading="gradeSaving">保存</el-button>
+            </template>
+        </el-dialog>
+    </div>
+
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <!-- Element Plus -->
+    <script src="https://unpkg.com/element-plus"></script>
+    <script src="https://unpkg.com/element-plus/dist/locale/zh-cn.js"></script>
+    <!-- Element Plus Icons (for prefix-icon compatibility) -->
+    <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+    <!-- API Layer -->
+    <script src="/js/api.js"></script>
+    <!-- App -->
+    <script src="/js/app.js"></script>
+</body>
+</html>

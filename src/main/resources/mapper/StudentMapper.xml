@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.stms.mapper.StudentMapper">
+
+    <resultMap id="BaseResultMap" type="com.stms.model.Student">
+        <id property="id" column="id"/>
+        <result property="studentNo" column="student_no"/>
+        <result property="name" column="name"/>
+        <result property="gender" column="gender"/>
+        <result property="className" column="class_name"/>
+        <result property="phone" column="phone"/>
+        <result property="email" column="email"/>
+        <result property="userId" column="user_id"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT id, student_no, name, gender, class_name, phone, email, created_at, updated_at
+        FROM t_student
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%')
+                     OR student_no LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY id DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM t_student
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%')
+                     OR student_no LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT id, student_no, name, gender, class_name, phone, email
+        FROM t_student
+        ORDER BY student_no
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM t_student WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.stms.model.Student" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_student (student_no, name, gender, class_name, phone, email)
+        VALUES (#{studentNo}, #{name}, #{gender}, #{className}, #{phone}, #{email})
+    </insert>
+
+    <update id="update" parameterType="com.stms.model.Student">
+        UPDATE t_student
+        SET student_no = #{studentNo},
+            name = #{name},
+            gender = #{gender},
+            class_name = #{className},
+            phone = #{phone},
+            email = #{email}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM t_grade WHERE student_id = #{id};
+        DELETE FROM t_student WHERE id = #{id};
+    </delete>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT * FROM t_student WHERE user_id = #{userId}
+    </select>
+
+</mapper>

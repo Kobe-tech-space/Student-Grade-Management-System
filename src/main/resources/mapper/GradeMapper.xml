@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.stms.mapper.GradeMapper">
+
+    <resultMap id="BaseResultMap" type="com.stms.model.Grade">
+        <id property="id" column="id"/>
+        <result property="studentId" column="student_id"/>
+        <result property="courseId" column="course_id"/>
+        <result property="score" column="score"/>
+        <result property="examDate" column="exam_date"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="studentName" column="student_name"/>
+        <result property="studentNo" column="student_no"/>
+        <result property="courseName" column="course_name"/>
+        <result property="className" column="class_name"/>
+    </resultMap>
+
+    <!-- 分页查询成绩，联表获取学生和课程信息 -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT g.id, g.student_id, g.course_id, g.score, g.exam_date,
+               s.name AS student_name, s.student_no, s.class_name,
+               c.course_name
+        FROM t_grade g
+        LEFT JOIN t_student s ON g.student_id = s.id
+        LEFT JOIN t_course c ON g.course_id = c.id
+        <where>
+            <if test="courseId != null">
+                AND g.course_id = #{courseId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND s.name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="studentId != null">
+                AND g.student_id = #{studentId}
+            </if>
+        </where>
+        ORDER BY g.id DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计成绩总数 -->
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM t_grade g
+        LEFT JOIN t_student s ON g.student_id = s.id
+        <where>
+            <if test="courseId != null">
+                AND g.course_id = #{courseId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND s.name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="studentId != null">
+                AND g.student_id = #{studentId}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT g.*, s.name AS student_name, c.course_name
+        FROM t_grade g
+        LEFT JOIN t_student s ON g.student_id = s.id
+        LEFT JOIN t_course c ON g.course_id = c.id
+        WHERE g.id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.stms.model.Grade" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_grade (student_id, course_id, score, exam_date)
+        VALUES (#{studentId}, #{courseId}, #{score}, #{examDate})
+    </insert>
+
+    <update id="update" parameterType="com.stms.model.Grade">
+        UPDATE t_grade
+        SET score = #{score}, exam_date = #{examDate}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM t_grade WHERE id = #{id}
+    </delete>
+
+    <!-- 排名统计：按课程筛选的排名 -->
+    <select id="rankingByCourse" resultType="com.stms.dto.RankingItem">
+        SELECT
+            g.student_id AS studentId,
+            s.name AS studentName,
+            s.student_no AS studentNo,
+            s.class_name AS className,
+            ROUND(AVG(g.score), 1) AS avgScore,
+            ROUND(SUM(g.score), 1) AS totalScore,
+            COUNT(g.id) AS courseCount
+        FROM t_grade g
+        INNER JOIN t_student s ON g.student_id = s.id
+        WHERE g.course_id = #{courseId}
+        GROUP BY g.student_id, s.name, s.student_no, s.class_name
+        ORDER BY avgScore DESC
+    </select>
+
+    <!-- 排名统计：全部课程汇总排名 -->
+    <select id="rankingAll" resultType="com.stms.dto.RankingItem">
+        SELECT
+            g.student_id AS studentId,
+            s.name AS studentName,
+            s.student_no AS studentNo,
+            s.class_name AS className,
+            ROUND(AVG(g.score), 1) AS avgScore,
+            ROUND(SUM(g.score), 1) AS totalScore,
+            COUNT(g.id) AS courseCount
+        FROM t_grade g
+        INNER JOIN t_student s ON g.student_id = s.id
+        GROUP BY g.student_id, s.name, s.student_no, s.class_name
+        ORDER BY avgScore DESC
+    </select>
+
+</mapper>

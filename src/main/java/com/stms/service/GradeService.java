@@ -1,6 +1,7 @@
 package com.stms.service;
 
 import com.stms.common.PageResult;
+import com.stms.dto.DashboardStats;
 import com.stms.dto.RankingItem;
 import com.stms.model.Grade;
 
@@ -30,4 +31,7 @@ public interface GradeService {
      * 排名按平均分降序
      */
     List<RankingItem> getRanking(Integer courseId);
+
+    /** Dashboard 真实统计数据（平均分、分布、趋势等） */
+    DashboardStats getDashboardStats();
 }

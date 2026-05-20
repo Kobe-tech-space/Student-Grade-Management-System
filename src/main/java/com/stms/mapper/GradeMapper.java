@@ -44,4 +44,24 @@ public interface GradeMapper {
 
     /** 排名统计 - 全部课程汇总 */
     List<RankingItem> rankingAll();
+
+    // ==================== Dashboard 真实统计 ====================
+
+    /** 全校平均分 */
+    java.math.BigDecimal overallAvgScore();
+
+    /** 最高分 */
+    java.math.BigDecimal highestScore();
+
+    /** 最低分 */
+    java.math.BigDecimal lowestScore();
+
+    /** 及格率（score >= 60 的占比） */
+    java.math.BigDecimal passRate();
+
+    /** 分数分布：统计各分数段人数，返回 Map 含 excellent/good/pass/fail */
+    java.util.Map<String, Object> scoreDistribution();
+
+    /** 近 5 次考试平均分趋势（按 exam_date 分组） */
+    List<java.util.Map<String, Object>> examTrend();
 }

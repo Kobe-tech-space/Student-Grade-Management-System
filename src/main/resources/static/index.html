@@ -106,7 +106,7 @@
                             <div class="stat-card" v-for="stat in stats" :key="stat.label" :style="{ '--accent': stat.color }">
                                 <div class="stat-icon"><i :class="stat.icon"></i></div>
                                 <div class="stat-info">
-                                    <div class="stat-value count-up" :data-target="stat.value">{{ stat.displayValue || 0 }}</div>
+                                    <div class="stat-value count-up">{{ stat.displayValue }}</div>
                                     <div class="stat-label">{{ stat.label }}</div>
                                     <div class="stat-sub" v-if="stat.sub">
                                         <i :class="stat.sub.startsWith('+') ? 'fa-solid fa-arrow-up up' : 'fa-solid fa-arrow-down down'"></i>

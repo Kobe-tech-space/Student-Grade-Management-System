@@ -137,25 +137,26 @@ const API = {
         return this.request('/grades/ranking', 'GET', null, { courseId });
     },
 
-    // ========== 仪表盘统计 ==========
-    /** 获取仪表盘统计数据（学生数、课程数、成绩数、平均分） */
+    // ========== Dashboard 真实统计 ==========
+    /** 获取后端真实统计（平均分、分布、趋势） */
+    getStats() {
+        return this.request('/grades/stats');
+    },
+
+    /** 获取 Dashboard 所需全部数据（基础数量 + 真实统计） */
     async getDashboardStats() {
-        const [students, courses, grades, ranking] = await Promise.all([
+        const [students, courses, stats] = await Promise.all([
             this.getStudents(1, 1, ''),
             this.getCourses(),
-            this.getGrades(1, 1, '', ''),
-            this.getRanking('')
+            this.getStats()
         ]);
-        let avgScore = '—';
-        if (ranking && ranking.length) {
-            const total = ranking.reduce((s, r) => s + (parseFloat(r.avgScore) || 0), 0);
-            avgScore = (total / ranking.length).toFixed(1);
-        }
         return {
             studentCount: students.total,
             courseCount: courses.length,
-            gradeCount: grades.total,
-            avgScore: avgScore
+            gradeCount: 0, // 由 stats 提供
+            avgScore: parseFloat(stats.avgScore) || 0,
+            distribution: stats.distribution,
+            trend: stats.trend
         };
     }
 };

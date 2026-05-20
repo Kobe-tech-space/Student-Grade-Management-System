@@ -113,4 +113,33 @@
         ORDER BY avgScore DESC
     </select>
 
+    <!-- ==================== Dashboard 真实统计 ==================== -->
+    <select id="overallAvgScore" resultType="java.math.BigDecimal">
+        SELECT ROUND(AVG(score), 1) FROM t_grade
+    </select>
+    <select id="highestScore" resultType="java.math.BigDecimal">
+        SELECT MAX(score) FROM t_grade
+    </select>
+    <select id="lowestScore" resultType="java.math.BigDecimal">
+        SELECT MIN(score) FROM t_grade
+    </select>
+    <select id="passRate" resultType="java.math.BigDecimal">
+        <![CDATA[SELECT ROUND(SUM(CASE WHEN score >= 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) FROM t_grade]]>
+    </select>
+    <select id="scoreDistribution" resultType="java.util.HashMap">
+        <![CDATA[
+        SELECT
+            SUM(CASE WHEN score >= 90 THEN 1 ELSE 0 END) AS excellent,
+            SUM(CASE WHEN score >= 80 AND score < 90 THEN 1 ELSE 0 END) AS good,
+            SUM(CASE WHEN score >= 60 AND score < 80 THEN 1 ELSE 0 END) AS pass,
+            SUM(CASE WHEN score < 60 THEN 1 ELSE 0 END) AS fail
+        FROM t_grade
+        ]]>
+    </select>
+    <select id="examTrend" resultType="java.util.HashMap">
+        SELECT DATE_FORMAT(exam_date, '%m-%d') AS examName, ROUND(AVG(score), 1) AS avgScore
+        FROM t_grade WHERE exam_date IS NOT NULL
+        GROUP BY exam_date ORDER BY exam_date DESC LIMIT 5
+    </select>
+
 </mapper>

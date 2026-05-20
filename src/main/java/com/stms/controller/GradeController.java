@@ -2,6 +2,7 @@ package com.stms.controller;
 
 import com.stms.common.PageResult;
 import com.stms.common.Result;
+import com.stms.dto.DashboardStats;
 import com.stms.dto.RankingItem;
 import com.stms.mapper.StudentMapper;
 import com.stms.model.Grade;
@@ -88,6 +89,16 @@ public class GradeController {
             @RequestParam(required = false) Integer courseId) {
         List<RankingItem> ranking = gradeService.getRanking(courseId);
         return Result.ok(ranking);
+    }
+
+    /**
+     * Dashboard 真实统计数据
+     * GET /api/grades/stats
+     */
+    @GetMapping("/stats")
+    public Result<DashboardStats> stats() {
+        DashboardStats stats = gradeService.getDashboardStats();
+        return Result.ok(stats);
     }
 
     private void checkAdmin(HttpServletRequest request) {

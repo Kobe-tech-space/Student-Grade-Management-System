@@ -59,37 +59,40 @@ const App = {
             return '晚上好';
         });
 
-        // KPI 统计
+        // KPI 统计（displayValue 独立 ref，countUp 直接写入）
+        const statDisplay1 = ref(0);
+        const statDisplay2 = ref(0);
+        const statDisplay3 = ref(0);
+        const statDisplay4 = ref(0);
         const stats = reactive([
-            { label: '学生总数', value: 0, displayValue: 0, icon: 'fa-solid fa-users', color: '#2563EB', sub: '' },
-            { label: '课程总数', value: 0, displayValue: 0, icon: 'fa-solid fa-book', color: '#10B981', sub: '' },
-            { label: '成绩记录', value: 0, displayValue: 0, icon: 'fa-solid fa-chart-line', color: '#F59E0B', sub: '' },
-            { label: '全校平均分', value: 0, displayValue: 0, icon: 'fa-solid fa-star', color: '#6366F1', sub: '' }
+            { label: '学生总数',  displayValue: statDisplay1, icon: 'fa-solid fa-users',      color: '#2563EB', sub: '' },
+            { label: '课程总数',  displayValue: statDisplay2, icon: 'fa-solid fa-book',        color: '#10B981', sub: '' },
+            { label: '成绩记录',  displayValue: statDisplay3, icon: 'fa-solid fa-chart-line',  color: '#F59E0B', sub: '' },
+            { label: '全校平均分', displayValue: statDisplay4, icon: 'fa-solid fa-star',       color: '#6366F1', sub: '' }
         ]);
 
-        /** count-up 数字增长动画 */
-        function countUp(statObj, duration = 800) {
-            const target = parseFloat(statObj.value) || 0;
-            const start = 0;
+        // 图表数据（从后端 stats 接口获取）
+        const chartTrendData = ref([]);
+        const chartDistData = ref({ excellent: 0, good: 0, pass: 0, fail: 0 });
+
+        /** count-up 数字增长动画（目标值已转 number，不会遇到字符串） */
+        function countUp(targetValue, displayRef, duration = 800) {
+            const target = parseFloat(targetValue) || 0;
+            const isDecimal = target % 1 !== 0;
             const startTime = performance.now();
 
             function step(now) {
                 const elapsed = now - startTime;
                 const progress = Math.min(elapsed / duration, 1);
-                // easeOutQuad 缓动
-                const eased = 1 - (1 - progress) * (1 - progress);
-                const current = start + (target - start) * eased;
+                const eased = 1 - (1 - progress) * (1 - progress); // easeOutQuad
+                const current = eased * target;
 
-                if (typeof statObj.value === 'number' && statObj.value % 1 !== 0) {
-                    statObj.displayValue = current.toFixed(1);
-                } else {
-                    statObj.displayValue = Math.floor(current);
-                }
+                displayRef.value = isDecimal ? current.toFixed(1) : Math.floor(current);
 
                 if (progress < 1) {
                     requestAnimationFrame(step);
                 } else {
-                    statObj.displayValue = target;
+                    displayRef.value = isDecimal ? target.toFixed(1) : target;
                 }
             }
             requestAnimationFrame(step);
@@ -102,12 +105,19 @@ const App = {
             dashboardLoading.value = true;
             try {
                 const data = await API.getDashboardStats();
-                stats[0].value = parseInt(data.studentCount) || 0;
-                stats[1].value = parseInt(data.courseCount) || 0;
-                stats[2].value = parseInt(data.gradeCount) || 0;
-                stats[3].value = data.avgScore;
-                // count-up
-                stats.forEach(s => countUp(s, 800));
+                // 全部转为 number 再传给 countUp
+                const sc = parseInt(data.studentCount) || 0;
+                const cc = parseInt(data.courseCount) || 0;
+                const gc = parseInt(data.gradeCount) || 0;
+                const as = parseFloat(data.avgScore) || 0;
+                countUp(sc, statDisplay1, 800);
+                countUp(cc, statDisplay2, 800);
+                countUp(gc, statDisplay3, 800);
+                countUp(as, statDisplay4, 800);
+
+                // 图表数据（真实）
+                chartTrendData.value = data.trend || [];
+                chartDistData.value = data.distribution || { excellent: 0, good: 0, pass: 0, fail: 0 };
 
                 // Top 10 排名
                 const ranking = await API.getRanking('');
@@ -116,113 +126,66 @@ const App = {
                 console.error('Dashboard load error:', e);
             }
             dashboardLoading.value = false;
-            // 渲染图表
             await nextTick();
             renderCharts();
         }
 
         // ==================== ECharts 图表 ====================
-        let chartTrendInstance = null;
-        let chartDistInstance = null;
-
         function getChartTheme() {
             return isDark.value ? {
-                textColor: '#94A3B8',
-                axisColor: '#334155',
-                splitColor: '#1E293B'
+                textColor: '#94A3B8', axisColor: '#334155', splitColor: '#1E293B'
             } : {
-                textColor: '#64748B',
-                axisColor: '#E2E8F0',
-                splitColor: '#F1F5F9'
+                textColor: '#64748B', axisColor: '#E2E8F0', splitColor: '#F1F5F9'
             };
         }
 
-        function renderCharts() {
-            // 销毁旧实例——v-if 切换页面时 DOM 已被重建，旧实例指向无效节点
-            if (chartTrendInstance) {
-                chartTrendInstance.dispose();
-                chartTrendInstance = null;
+        function getOrCreateChart(domId) {
+            const dom = document.getElementById(domId);
+            if (!dom) return null;
+            // 优先复用现有实例（v-if 销毁 DOM 后旧实例已失效，dispose 由 DOM 移除自动触发）
+            let instance = echarts.getInstanceByDom(dom);
+            if (!instance) {
+                instance = echarts.init(dom);
             }
-            if (chartDistInstance) {
-                chartDistInstance.dispose();
-                chartDistInstance = null;
-            }
+            return instance;
+        }
 
+        function renderCharts() {
             const theme = getChartTheme();
+            const trendData = chartTrendData.value;
+            const distData = chartDistData.value;
 
             // 趋势柱状图
-            const trendDom = document.getElementById('chartTrend');
-            if (trendDom) {
-                chartTrendInstance = echarts.init(trendDom);
-                chartTrendInstance.setOption({
+            const trendChart = getOrCreateChart('chartTrend');
+            if (trendChart && trendData.length) {
+                const names = trendData.map(t => t.examName || '');
+                const scores = trendData.map(t => parseFloat(t.avgScore) || 0);
+                trendChart.setOption({
                     tooltip: { trigger: 'axis' },
                     grid: { left: 40, right: 20, top: 10, bottom: 30 },
-                    xAxis: {
-                        type: 'category',
-                        data: ['考试一', '考试二', '考试三', '考试四', '考试五'],
-                        axisLine: { lineStyle: { color: theme.axisColor } },
-                        axisLabel: { color: theme.textColor, fontSize: 11 }
-                    },
-                    yAxis: {
-                        type: 'value', min: 0, max: 100,
-                        splitLine: { lineStyle: { color: theme.splitColor } },
-                        axisLabel: { color: theme.textColor, fontSize: 11 }
-                    },
-                    series: [{
-                        data: [72, 75, 78, 80, parseFloat(stats[3].value) || 75],
-                        type: 'bar',
-                        barWidth: 32,
-                        itemStyle: {
-                            borderRadius: [6, 6, 0, 0],
-                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                { offset: 0, color: '#3B82F6' },
-                                { offset: 1, color: '#2563EB' }
-                            ])
-                        },
-                        emphasis: {
-                            itemStyle: { color: '#60A5FA' }
-                        }
-                    }]
-                });
-                chartTrendInstance.resize();
+                    xAxis: { type: 'category', data: names, axisLine: { lineStyle: { color: theme.axisColor } }, axisLabel: { color: theme.textColor, fontSize: 11 } },
+                    yAxis: { type: 'value', min: 0, max: 100, splitLine: { lineStyle: { color: theme.splitColor } }, axisLabel: { color: theme.textColor, fontSize: 11 } },
+                    series: [{ data: scores, type: 'bar', barWidth: 32, itemStyle: { borderRadius: [6, 6, 0, 0], color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#3B82F6' }, { offset: 1, color: '#2563EB' }]) }, emphasis: { itemStyle: { color: '#60A5FA' } } }]
+                }, true); // notMerge=true 确保完全替换
+                trendChart.resize();
             }
 
             // 成绩分布饼图
-            const distDom = document.getElementById('chartDist');
-            if (distDom) {
-                chartDistInstance = echarts.init(distDom);
-                // 从成绩数据计算分布（用排名数据模拟）
-                const ranking = topRanking.value;
-                let excellent = 0, good = 0, pass = 0, fail = 0;
-                ranking.forEach(r => {
-                    const s = parseFloat(r.avgScore) || 0;
-                    if (s >= 90) excellent++;
-                    else if (s >= 80) good++;
-                    else if (s >= 60) pass++;
-                    else fail++;
-                });
-                if (excellent + good + pass + fail === 0) { excellent = 3; good = 4; pass = 2; fail = 1; }
-
-                chartDistInstance.setOption({
+            const distChart = getOrCreateChart('chartDist');
+            if (distChart) {
+                distChart.setOption({
                     tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
                     legend: { bottom: 0, textStyle: { color: theme.textColor, fontSize: 11 } },
-                    series: [{
-                        type: 'pie',
-                        radius: ['50%', '78%'],
-                        center: ['50%', '48%'],
-                        avoidLabelOverlap: false,
-                        itemStyle: { borderRadius: 4, borderColor: isDark.value ? '#1E293B' : '#fff', borderWidth: 3 },
-                        label: { show: false },
-                        emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
+                    series: [{ type: 'pie', radius: ['50%', '78%'], center: ['50%', '48%'], avoidLabelOverlap: false, itemStyle: { borderRadius: 4, borderColor: isDark.value ? '#1E293B' : '#fff', borderWidth: 3 }, label: { show: false }, emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
                         data: [
-                            { value: excellent, name: '优秀(90+)',  itemStyle: { color: '#10B981' } },
-                            { value: good,      name: '良好(80-89)', itemStyle: { color: '#2563EB' } },
-                            { value: pass,      name: '及格(60-79)', itemStyle: { color: '#F59E0B' } },
-                            { value: fail,      name: '不及格(<60)', itemStyle: { color: '#EF4444' } }
+                            { value: distData.excellent || 0, name: '优秀(90+)',  itemStyle: { color: '#10B981' } },
+                            { value: distData.good || 0,      name: '良好(80-89)', itemStyle: { color: '#2563EB' } },
+                            { value: distData.pass || 0,      name: '及格(60-79)', itemStyle: { color: '#F59E0B' } },
+                            { value: distData.fail || 0,      name: '不及格(<60)', itemStyle: { color: '#EF4444' } }
                         ]
                     }]
-                });
-                chartDistInstance.resize();
+                }, true);
+                distChart.resize();
             }
         }
 
@@ -360,7 +323,7 @@ const App = {
                 ElementPlus.ElMessage.success('删除成功');
                 await loadStudents();
             } catch (e) {
-                if (e !== 'cancel') ElementPlus.ElMessage.error(e.message || '删除失败');
+                if (e !== 'cancel' && e !== 'close') ElementPlus.ElMessage.error(e.message || '删除失败');
             }
         }
 
@@ -368,8 +331,14 @@ const App = {
         const allCourses = ref([]);
         const allStudents = ref([]);
 
-        async function loadCourses() { try { allCourses.value = await API.getCourses(); } catch {} }
-        async function loadAllStudents() { try { allStudents.value = await API.getAllStudents(); } catch {} }
+        async function loadCourses() {
+            try { allCourses.value = await API.getCourses(); }
+            catch (e) { console.error('loadCourses failed', e); }
+        }
+        async function loadAllStudents() {
+            try { allStudents.value = await API.getAllStudents(); }
+            catch (e) { console.error('loadAllStudents failed', e); }
+        }
 
         const gradeEntryForm = reactive({ studentId: null, courseId: null, score: null, examDate: '' });
         const gradeSubmitting = ref(false);
@@ -463,7 +432,7 @@ const App = {
                 ElementPlus.ElMessage.success('删除成功');
                 await loadGrades();
             } catch (e) {
-                if (e !== 'cancel') ElementPlus.ElMessage.error(e.message || '删除失败');
+                if (e !== 'cancel' && e !== 'close') ElementPlus.ElMessage.error(e.message || '删除失败');
             }
         }
 
@@ -520,7 +489,9 @@ const App = {
         // ==================== 暴露 ====================
         return {
             isLoggedIn, userInfo, currentRoute, currentTitle, sidebarCollapsed, menuItems,
-            stats, dashboardLoading, topRanking, greetingText,
+            stats, statDisplay1, statDisplay2, statDisplay3, statDisplay4,
+            chartTrendData, chartDistData,
+            dashboardLoading, topRanking, greetingText,
             isDark, themeLabel, toggleTheme,
             loginForm, loginRules, loginFormRef, loginLoading, handleLogin, handleLogout,
             navigateTo,

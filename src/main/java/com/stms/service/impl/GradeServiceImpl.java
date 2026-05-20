@@ -39,7 +39,11 @@ public class GradeServiceImpl implements GradeService {
 
     @Override
     public void addGrade(Grade grade) {
-        gradeMapper.insert(grade);
+        try {
+            gradeMapper.insert(grade);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            throw new RuntimeException("该学生此课程已有成绩，请勿重复录入");
+        }
     }
 
     @Override

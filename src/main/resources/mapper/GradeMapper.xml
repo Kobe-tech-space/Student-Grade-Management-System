@@ -30,7 +30,8 @@
                 AND g.course_id = #{courseId}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND s.name LIKE CONCAT('%', #{keyword}, '%')
+                AND (s.name LIKE CONCAT('%', #{keyword}, '%')
+                     OR s.student_no LIKE CONCAT('%', #{keyword}, '%'))
             </if>
             <if test="studentId != null">
                 AND g.student_id = #{studentId}
@@ -49,7 +50,8 @@
                 AND g.course_id = #{courseId}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND s.name LIKE CONCAT('%', #{keyword}, '%')
+                AND (s.name LIKE CONCAT('%', #{keyword}, '%')
+                     OR s.student_no LIKE CONCAT('%', #{keyword}, '%'))
             </if>
             <if test="studentId != null">
                 AND g.student_id = #{studentId}
@@ -71,9 +73,7 @@
     </insert>
 
     <update id="update" parameterType="com.stms.model.Grade">
-        UPDATE t_grade
-        SET score = #{score}, exam_date = #{examDate}
-        WHERE id = #{id}
+        UPDATE t_grade SET score = #{score} WHERE id = #{id}
     </update>
 
     <delete id="deleteById">

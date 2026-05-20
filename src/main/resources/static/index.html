@@ -42,8 +42,7 @@
                         </el-button>
                     </el-form-item>
                 </el-form>
-                <div class="login-footer"><span>admin / admin123 · zhangsan / 123456</span></div>
-            </div>
+                            </div>
         </div>
 
         <!-- ==================== 主界面 ==================== -->
@@ -268,7 +267,7 @@
                                 <el-select v-model="gradeQuery.courseId" placeholder="全部课程" clearable style="width:180px" @change="loadGrades" size="large">
                                     <el-option v-for="c in allCourses" :key="c.id" :value="c.id" :label="c.courseName"></el-option>
                                 </el-select>
-                                <el-input v-model="gradeQuery.keyword" placeholder="搜索学生姓名..." clearable style="width:220px" @keyup.enter="loadGrades" size="large">
+                                <el-input v-model="gradeQuery.keyword" placeholder="搜索姓名或学号..." clearable style="width:220px" @keyup.enter="loadGrades" size="large">
                                     <template #prefix><i class="fa-solid fa-magnifying-glass"></i></template>
                                 </el-input>
                                 <el-button type="primary" size="large" @click="loadGrades"><i class="fa-solid fa-search"></i> 查询</el-button>

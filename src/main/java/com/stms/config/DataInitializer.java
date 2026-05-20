@@ -30,12 +30,7 @@ public class DataInitializer implements CommandLineRunner {
         resetPassword("lisi", "123456");
         resetPassword("wangwu", "123456");
 
-        System.out.println("测试账号密码已初始化完成：");
-        System.out.println("  管理员: admin / admin123");
-        System.out.println("  学生:   zhangsan / 123456");
-        System.out.println("  学生:   lisi / 123456");
-        System.out.println("  学生:   wangwu / 123456");
-        System.out.println("========================================");
+        System.out.println("用户密码初始化完成");
     }
 
     /**
